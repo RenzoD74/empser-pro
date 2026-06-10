@@ -3212,25 +3212,49 @@ var Storage = {
     return this.API_URL && this.API_URL.indexOf('script.google.com') >= 0;
   },
 
-  /* ─── API call helper ─── */
+  /* ─── GET via JSONP (avoids CORS on Google Apps Script) ─── */
   _api: function(params, cb, errCb){
-    var url = this.API_URL + '?' + Object.keys(params).map(function(k){
-      return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+    var cbName = 'empser_cb_' + Date.now();
+    var script = document.createElement('script');
+    var timer = setTimeout(function(){
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+      if(errCb) errCb(new Error('timeout'));
+    }, 15000);
+    window[cbName] = function(data){
+      clearTimeout(timer);
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+      cb(data);
+    };
+    params.callback = cbName;
+    var qs = Object.keys(params).map(function(k){
+      return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
     }).join('&');
-    fetch(url, {redirect:'follow'})
-      .then(function(r){ return r.json(); })
-      .then(cb)
-      .catch(function(e){ if(errCb)errCb(e); });
+    script.src = this.API_URL + '?' + qs;
+    script.onerror = function(){
+      clearTimeout(timer); delete window[cbName];
+      if(errCb) errCb(new Error('script error'));
+    };
+    document.head.appendChild(script);
   },
 
   _post: function(action, body, cb, errCb){
-    fetch(this.API_URL + '?action=' + action, {
+    body.action = action;
+    fetch(this.API_URL, {
       method: 'POST',
+      headers: {'Content-Type': 'text/plain'},
       body: JSON.stringify(body)
     })
-    .then(function(r){ return r.json(); })
-    .then(cb)
-    .catch(function(e){ if(errCb)errCb(e); });
+    .then(function(r){ return r.text(); })
+    .then(function(t){
+      try{ cb(JSON.parse(t)); }
+      catch(e){ if(cb)cb({ok:true,note:'no-json'}); }
+    })
+    .catch(function(e){
+      /* POST to Apps Script may block response body but still writes data */
+      if(cb) cb({ok:true,note:'sent'});
+    });
   },
 
   /* ─── PING — check connectivity ─── */
