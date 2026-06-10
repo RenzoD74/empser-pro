@@ -3414,27 +3414,27 @@ var Storage = {
     this._syncing = true;
     this._updateUI('Sincronizando...');
 
-    /* Sync personal */
+    /* Sync using batchSync — clears sheet and rewrites all rows */
     if(DB.personal.length){
-      self._post('batch', {sheet:'Personal', rows:DB.personal.map(function(p){
+      self._post('batchSync', {sheet:'Personal', rows:DB.personal.map(function(p){
         return {id:p.id,nombre:p.nombre,dni:p.dni,modalidad:p.modalidad,
                 telefono:p.telefono,estado:p.estado,fecha_reg:p.fecha_reg||''};
       })}, function(){});
     }
     /* Sync vehiculos */
     if(DB.vehiculos.length){
-      self._post('batch', {sheet:'Vehiculos', rows:DB.vehiculos.map(function(v){
+      self._post('batchSync', {sheet:'Vehiculos', rows:DB.vehiculos.map(function(v){
         return {id:v.id,placa:v.placa,cat:v.cat,tipo:v.tipo,prop:v.prop,
                 estado:v.estado||'ACTIVO',fecha_reg:v.fecha_reg||''};
       })}, function(){});
     }
     /* Sync servicios */
     if(DB.servicios.length){
-      self._post('batch', {sheet:'Servicios', rows:DB.servicios}, function(){});
+      self._post('batchSync', {sheet:'Servicios', rows:DB.servicios}, function(){});
     }
     /* Sync audit */
     if(DB.audit.length){
-      self._post('batch', {sheet:'Audit', rows:DB.audit}, function(){});
+      self._post('batchSync', {sheet:'Audit', rows:DB.audit}, function(){});
     }
 
     setTimeout(function(){
